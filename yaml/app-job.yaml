@@ -1,0 +1,45 @@
+
+                                                                              
+    apiVersion: batch/v1                                                      
+    kind: Job                                                                 
+    metadata:                                                                 
+      name: app-job                                                           
+    spec:                                                                     
+      template:                                                               
+        spec:                                                                 
+          restartPolicy: Never                                                
+          initContainers:                                                     
+          - name: init                                                        
+            image: google/cloud-sdk:275.0.0-alpine                            
+            command: ["gsutil", "-m", "rsync", "-dr", "gs://glow-sportradar/",
+  "/data/input"]                                                              
+            volumeMounts:                                                     
+            - name: data-input                                                
+              mountPath: /data/input                                          
+          containers:                                                         
+          - name: processor                                                   
+            image: glowtools/soccer:latest-4e4254a                            
+            command: ["ls", "-l", "/data/input"]                              
+            volumeMounts:                                                     
+            - name: data-input                                                
+              mountPath: /data/input                                          
+            - name: data-output                                               
+              mountPath: /data/output                                         
+            lifecycle:                                                        
+              postStart:                                                      
+                exec:                                                         
+                  command: ["/bin/sh", "-c", "echo 'postStart message' >      
+  /data/input/message"]                                                       
+              preStop:                                                        
+                exec:                                                         
+                  command: ["/bin/sh", "-c", "echo 'preStop message' >        
+  /data/output/message"]                                                      
+          volumes:                                                            
+          - name: data-input                                                  
+            gcePersistentDisk:                                                
+              pdName: glow-data-disk-200                                      
+              fsType: ext4                                                    
+          - name: data-output                                                 
+            emptyDir: {}                                                      
+      backoffLimit: 0                                                         
+
